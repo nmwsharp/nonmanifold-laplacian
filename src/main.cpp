@@ -41,7 +41,7 @@ float mollifyFactor = 0.;
 // Viz Parameters
 bool withGUI = true;
 float bubbleScale = .2;
-int subdivLevel = 3;
+int subdivLevel = 2;
 int pointsPerTriEdge = 10;
 
 // This re-runs the whole tufted cover algorithm, but does extra processing to separate out vertex tangent spaces so
@@ -85,7 +85,6 @@ void generateVertexSeparatedTuftedCover() {
 
   // Flip to delaunay
   signpostTri->flipToDelaunay();
-
 }
 
 void generateVisualization() {
@@ -93,7 +92,8 @@ void generateVisualization() {
   // == Generate the the bubbly mesh visualization
   std::unique_ptr<SimplePolygonMesh> subSoup =
       subdivideRounded(*manifoldTuftedMesh, *tuftedGeom, subdivLevel, bubbleScale, 0, 0);
-  polyscope::registerSurfaceMesh("bubble tufted cover", subSoup->vertexCoordinates, subSoup->polygons);
+  auto* bubMesh = polyscope::registerSurfaceMesh("bubble tufted cover", subSoup->vertexCoordinates, subSoup->polygons);
+  bubMesh->setSmoothShade(true);
 
 
   // == Trace intrinsic edges across the bubbly mesh
@@ -192,21 +192,15 @@ void myCallback() {
 
   ImGui::PushItemWidth(100);
 
-  ImGui::TextUnformatted("Intrinsic triangulation:");
-  // ImGui::Text("  nVertices = %lu  nFaces = %lu", signpostTri->mesh.nVertices(), signpostTri->mesh.nFaces());
+  ImGui::TextUnformatted("Visualization:");
+  ImGui::SliderFloat("bubble magnitude", &bubbleScale, .0, .5);
+  ImGui::InputInt("bubble subivsion rounds", &subdivLevel);
+  ImGui::InputInt("traced edge resolution", &pointsPerTriEdge);
 
-  ImGui::SetNextTreeNodeOpen(true);
-  if (ImGui::TreeNode("Visualization")) {
-    ImGui::InputInt("subivsion rounds", &subdivLevel);
-    ImGui::SliderFloat("bubble scale", &bubbleScale, .0, .5);
-    ImGui::InputInt("points per tri edge", &pointsPerTriEdge);
-
-    if (ImGui::Button("Regenerate visualization")) {
-      generateVisualization();
-    }
-
-    ImGui::TreePop();
+  if (ImGui::Button("Regenerate visualization")) {
+    generateVisualization();
   }
+
 
   ImGui::PopItemWidth();
 }
