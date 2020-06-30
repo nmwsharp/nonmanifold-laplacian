@@ -68,7 +68,7 @@ add_subdirectory(deps/polyscope)
 
 set(SRCS 
   src/main.cpp
-	# add any other source files here
+  src/bubble_offset.cpp
 )
 
 add_executable(tufted-idt "${SRCS}")
