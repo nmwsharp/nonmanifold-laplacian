@@ -1,9 +1,9 @@
 # nonmanifold-laplacians
-Robust Laplace operators for general (possibly nonmanifold) meshes [Sharp &amp; Crane SGP 2020]
+
+Robust Laplace operators for general (possibly nonmanifold) meshes. For details, see [A Laplacian for Nonmanifold Triangle Meshes](http://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf) by [Nicholas Sharp](http://nmwsharp.com) and [Keenan Crane](http://keenan.is/here) at SGP 2020.
+
 
 This method efficiently generates a high-quality `V x V` Laplace matrix for any (possibly nonmanifold, with or without boundary) triangular 3D surface mesh. In particular, the resulting Laplacian will always satisfy the _maximum principle_, with all-positive edge weights between nodes. The method can also produce a similar Laplacian for a point cloud.
-
-Read the paper here: [A Laplacian for Nonmanifold Triangle Meshes](http://www.cs.cmu.edu/~kmcrane/Projects/NonmanifoldLaplace/NonmanifoldLaplace.pdf)
 
 The core algorithm is implemented in [geometry-central](http://geometry-central.net). This is a simple application which loads a mesh or point cloud, builds our intrinsic tufted cover, and generates the resulting Laplace (and mass) matrix. 
 
