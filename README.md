@@ -46,6 +46,8 @@ Sparse matrices are output as an ASCII file where each line one entry in the mat
 
 ### Known issues
 
+This implementation is not the same code which was used to generate the results in the paper. If you need exact comparisons, please contact the authors.
+
 - Any unreferenced vertices in the input are stripped from the output
 - For point clouds, this repo uses a simple method to generate planar Delaunay triangulations, which may not be totally robust to collinear or degenerate point clouds.
 
