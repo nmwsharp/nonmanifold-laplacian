@@ -8,6 +8,8 @@ The core algorithm is implemented in [geometry-central](http://geometry-central.
 
 As a command-line tool, the program will output matrices in a simple format which can be read in by other programs (including MATLAB, etc). It can also be run with the `--gui` flag, to create a window and visualize the relevant data---though be wary that this visualization is significantly more expensive and less robust than the main algorithm.
 
+![GUI demo gif](https://github.com/nmwsharp/nonmanifold-laplacian/blob/master/misc/demo.gif)
+
 ### Building and running
 
 On unix-like machines, use:
@@ -42,7 +44,13 @@ Use `--help` for defaults, etc.
 
 Sparse matrices are output as an ASCII file where each line one entry in the matrix, giving the row, column, and value. The row and column indices are **1-indexed** to make matlab happy. These files can be automatically loaded in matlab ([see here](https://www.mathworks.com/help/matlab/ref/spconvert.html)). Parsers in other environments should be straightforward.
 
-### Direct Dependencies
+### Known issues
+
+- Any unreferenced vertices in the input are stripped from the output
+- For point clouds, this repo uses a simple method to generate planar Delaunay triangulations, which may not be totally robust to collinear or degenerate point clouds.
+
+
+### Direct dependencies
 
 - [geometry-central](http://geometry-central.net) for mesh data structures and 3D geometry
 - [Polyscope](http://polyscope.run/) for 3D visualizations and rendering
