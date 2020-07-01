@@ -255,9 +255,8 @@ int main(int argc, char** argv) {
 
   // Load mesh
   SimplePolygonMesh inputMesh(args::get(inputFilename));
-  inputMesh.polygons.clear();
 
-  // if it's a point cloud, read off some triangles
+  // if it's a point cloud, generate some triangles
   isPointCloud = inputMesh.polygons.empty();
   if (isPointCloud) {
     Neighbors_t neigh = generate_knn(inputMesh.vertexCoordinates, nNeigh);
@@ -276,11 +275,12 @@ int main(int argc, char** argv) {
         inputMesh.polygons.push_back({triGlobal[0], triGlobal[1], triGlobal[2]});
       }
     }
-  } else {
-    inputMesh.stripFacesWithDuplicateVertices();
-    inputMesh.stripUnusedVertices();
-    inputMesh.triangulate();
   }
+
+  // make sure the input really is a triangle mesh
+  inputMesh.stripFacesWithDuplicateVertices(); // need a richer format to encode these
+  inputMesh.stripUnusedVertices();             // TODO: maybe should insert a 1 into final matrix for these?
+  inputMesh.triangulate();                     // probably what the user wants
 
   std::tie(mesh, geometry) = makeGeneralHalfedgeAndGeometry(inputMesh.polygons, inputMesh.vertexCoordinates);
 
