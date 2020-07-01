@@ -1,4 +1,5 @@
 #include "bubble_offset.h"
+#include "point_cloud_utilities.h"
 
 #include "geometrycentral/numerical/linear_algebra_utilities.h"
 #include "geometrycentral/surface/edge_length_geometry.h"
@@ -13,6 +14,7 @@
 #include "geometrycentral/surface/vertex_position_geometry.h"
 
 #include "polyscope/curve_network.h"
+#include "polyscope/point_cloud.h"
 #include "polyscope/polyscope.h"
 #include "polyscope/surface_mesh.h"
 
@@ -37,12 +39,15 @@ std::unique_ptr<SignpostIntrinsicTriangulation> signpostTri;
 
 // Parameters
 float mollifyFactor = 0.;
+bool isPointCloud = false;
+unsigned int nNeigh = 30;
 
 // Viz Parameters
 bool withGUI = true;
 float bubbleScale = .2;
 int subdivLevel = 2;
 int pointsPerTriEdge = 10;
+polyscope::SurfaceMesh* psMesh = nullptr;
 
 // This re-runs the whole tufted cover algorithm, but does extra processing to separate out vertex tangent spaces so
 // that we can use signposts, trace edges, and make some visualizations.
@@ -215,6 +220,7 @@ int main(int argc, char** argv) {
 
   args::Group algorithmOptions(parser, "algorithm options");
   args::ValueFlag<double> mollifyFactorArg(algorithmOptions, "mollifyFactor", "Amount of intrinsic mollification to perform, which gives robustness to degenerate triangles. Defined relative to the mean edge length. Default: 1e-6", {"mollifyFactor"}, 1e-6);
+  args::ValueFlag<unsigned int> nNeighArg(algorithmOptions, "nNeigh", "Number of neighbors to use for point cloud Laplacian (usually does not need to be changed). Default: 30", {"nNeigh"}, 30);
 
   args::Group output(parser, "ouput");
   args::Flag gui(output, "gui", "open a GUI after processing and generate some visualizations", {"gui"});
@@ -244,22 +250,51 @@ int main(int argc, char** argv) {
   // Set options
   withGUI = gui;
   mollifyFactor = args::get(mollifyFactorArg);
+  nNeigh = args::get(nNeighArg);
   std::string outputPrefix = args::get(outputPrefixArg);
 
   // Load mesh
   SimplePolygonMesh inputMesh(args::get(inputFilename));
+  inputMesh.polygons.clear();
 
-  inputMesh.stripFacesWithDuplicateVertices();
-  inputMesh.stripUnusedVertices();
-  inputMesh.triangulate();
+  // if it's a point cloud, read off some triangles
+  isPointCloud = inputMesh.polygons.empty();
+  if (isPointCloud) {
+    Neighbors_t neigh = generate_knn(inputMesh.vertexCoordinates, nNeigh);
+    std::vector<Vector3> normals = generate_normals(inputMesh.vertexCoordinates, neigh);
+    std::vector<std::vector<Vector2>> coords = generate_coords_projection(inputMesh.vertexCoordinates, normals, neigh);
+    LocalTriangulationResult localTri = build_delaunay_triangulations(coords, neigh, false);
+
+    // Take the union of all triangles in all the neighborhoods
+    for (size_t iPt = 0; iPt < inputMesh.vertexCoordinates.size(); iPt++) {
+      const std::vector<size_t>& thisNeigh = neigh[iPt];
+      size_t nNeigh = thisNeigh.size();
+
+      // Accumulate over triangles
+      for (const auto& tri : localTri.pointTriangles[iPt]) {
+        std::array<size_t, 3> triGlobal = {thisNeigh[tri[0]], thisNeigh[tri[1]], thisNeigh[tri[2]]};
+        inputMesh.polygons.push_back({triGlobal[0], triGlobal[1], triGlobal[2]});
+      }
+    }
+  } else {
+    inputMesh.stripFacesWithDuplicateVertices();
+    inputMesh.stripUnusedVertices();
+    inputMesh.triangulate();
+  }
 
   std::tie(mesh, geometry) = makeGeneralHalfedgeAndGeometry(inputMesh.polygons, inputMesh.vertexCoordinates);
+
 
   // ta-da! (invoke the algorithm from geometry-central)
   std::cout << "Building tufted Laplacian..." << std::endl;
   SparseMatrix<double> L, M;
   std::tie(L, M) = buildTuftedLaplacian(*mesh, *geometry, mollifyFactor);
+  if (isPointCloud) {
+    L = L / 3.;
+    M = M / 3.;
+  }
   std::cout << "  ...done!" << std::endl;
+
 
   // write output matrices, if requested
   if (writeLaplacian) {
@@ -271,7 +306,6 @@ int main(int argc, char** argv) {
 
   if (withGUI) {
     std::cout << "Generating visualization..." << std::endl;
-
     // Initialize polyscope
     polyscope::init();
 
@@ -283,7 +317,14 @@ int main(int argc, char** argv) {
     polyscope::state::userCallback = myCallback;
 
     // The mesh
-    polyscope::registerSurfaceMesh("input mesh", inputMesh.vertexCoordinates, inputMesh.polygons);
+    std::string name = isPointCloud ? "union mesh" : "input mesh";
+    psMesh = polyscope::registerSurfaceMesh(name, inputMesh.vertexCoordinates, inputMesh.polygons);
+
+    // Register the point cloud if we have it
+    if (isPointCloud) {
+      psMesh->setEnabled(false);
+      polyscope::registerPointCloud("input cloud", inputMesh.vertexCoordinates);
+    }
 
     // Give control to the polyscope gui
     std::cout << "  ...done!" << std::endl;

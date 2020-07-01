@@ -67,10 +67,12 @@ add_subdirectory(deps/polyscope)
 # == Build our project stuff
 
 set(SRCS 
-  src/main.cpp
   src/bubble_offset.cpp
+  src/point_cloud_utilities.cpp
+  src/main.cpp
 )
 
 add_executable(tufted-idt "${SRCS}")
 target_include_directories(tufted-idt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_include_directories(tufted-idt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/jc_voronoi/include")
 target_link_libraries(tufted-idt geometry-central polyscope)
