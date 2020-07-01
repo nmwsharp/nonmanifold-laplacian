@@ -214,7 +214,7 @@ int main(int argc, char** argv) {
 
   // Configure the argument parser
   // clang-format off
-  args::ArgumentParser parser("Demo for ");
+  args::ArgumentParser parser("Demo for construction robust nonmanifold Laplacians using the tufted cover. See https://github.com/nmwsharp/nonmanifold-laplacian");
   args::HelpFlag help(parser, "help", "Display this help message", {'h', "help"});
   args::Positional<std::string> inputFilename(parser, "mesh", "A surface mesh file (see geometry-central for valid formats)");
 
