@@ -251,10 +251,6 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
     jcv_diagram_free(&diagram);
   }
 
-  double totA = 0.;
-  for (double a : result.voronoiAreas) totA += a;
-  std::cout << "total voronoi area = " << totA << std::endl;
-
   return result;
 }
 
