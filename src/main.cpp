@@ -41,6 +41,8 @@ std::unique_ptr<SignpostIntrinsicTriangulation> signpostTri;
 float mollifyFactor = 0.;
 bool isPointCloud = false;
 unsigned int nNeigh = 30;
+double laplacianReplaceVal = 1.;
+double massReplaceVal = -1e-3;
 
 // Viz Parameters
 bool withGUI = true;
@@ -214,13 +216,16 @@ int main(int argc, char** argv) {
 
   // Configure the argument parser
   // clang-format off
-  args::ArgumentParser parser("Demo for construction robust nonmanifold Laplacians using the tufted cover. See https://github.com/nmwsharp/nonmanifold-laplacian");
+  args::ArgumentParser parser("Demo for constructing robust nonmanifold Laplacians using the tufted cover. See https://github.com/nmwsharp/nonmanifold-laplacian");
   args::HelpFlag help(parser, "help", "Display this help message", {'h', "help"});
-  args::Positional<std::string> inputFilename(parser, "mesh", "A surface mesh file (see geometry-central for valid formats)");
+  args::Positional<std::string> inputFilename(parser, "mesh", "A surface mesh file, or a point cloud. (see geometry-central for valid formats)");
 
   args::Group algorithmOptions(parser, "algorithm options");
   args::ValueFlag<double> mollifyFactorArg(algorithmOptions, "mollifyFactor", "Amount of intrinsic mollification to perform, which gives robustness to degenerate triangles. Defined relative to the mean edge length. Default: 1e-6", {"mollifyFactor"}, 1e-6);
   args::ValueFlag<unsigned int> nNeighArg(algorithmOptions, "nNeigh", "Number of neighbors to use for point cloud Laplacian (usually does not need to be changed). Default: 30", {"nNeigh"}, 30);
+  
+  args::ValueFlag<double> laplacianReplaceValArg(algorithmOptions, "laplacianReplace", "For any unreferenced vertices in the input, put this this value in the diagonal of the Laplace matrix. Default: 1", {"laplacianReplace"}, 1.);
+  args::ValueFlag<double> massReplaceValArg(algorithmOptions, "massReplace", "For any unreferenced vertices in the input, put this this value in the diagonal of the mass matrix. Negative values will interpreted relative to the smallest mass entry among referenced vertices, like X times the smallest mass. Default: -1e-3", {"massReplace"}, -1e-3);
 
   args::Group output(parser, "ouput");
   args::Flag gui(output, "gui", "open a GUI after processing and generate some visualizations", {"gui"});
@@ -232,10 +237,10 @@ int main(int argc, char** argv) {
   // Parse args
   try {
     parser.ParseCLI(argc, argv);
-  } catch (args::Help &e) {
+  } catch (args::Help& e) {
     std::cout << parser;
     return 0;
-  } catch (args::ParseError &e) {
+  } catch (args::ParseError& e) {
     std::cerr << e.what() << std::endl;
     std::cerr << parser;
     return 1;
@@ -251,12 +256,15 @@ int main(int argc, char** argv) {
   withGUI = gui;
   mollifyFactor = args::get(mollifyFactorArg);
   nNeigh = args::get(nNeighArg);
+  laplacianReplaceVal = args::get(laplacianReplaceValArg);
+  massReplaceVal = args::get(massReplaceValArg);
   std::string outputPrefix = args::get(outputPrefixArg);
 
   // Load mesh
   SimplePolygonMesh inputMesh(args::get(inputFilename));
 
   // if it's a point cloud, generate some triangles
+  // inputMesh.polygons.clear(); // FIXME
   isPointCloud = inputMesh.polygons.empty();
   if (isPointCloud) {
     Neighbors_t neigh = generate_knn(inputMesh.vertexCoordinates, nNeigh);
@@ -279,8 +287,8 @@ int main(int argc, char** argv) {
 
   // make sure the input really is a triangle mesh
   inputMesh.stripFacesWithDuplicateVertices(); // need a richer format to encode these
-  inputMesh.stripUnusedVertices();             // TODO: maybe should insert a 1 into final matrix for these?
-  inputMesh.triangulate();                     // probably what the user wants
+  std::vector<size_t> oldToNewMap = inputMesh.stripUnusedVertices();
+  inputMesh.triangulate(); // probably what the user wants
 
   std::tie(mesh, geometry) = makeGeneralHalfedgeAndGeometry(inputMesh.polygons, inputMesh.vertexCoordinates);
 
@@ -294,6 +302,77 @@ int main(int argc, char** argv) {
     M = M / 3.;
   }
   std::cout << "  ...done!" << std::endl;
+
+  // If necessary, re-index matrices to account for any unreferenced vertices which were skipped.
+  // For any unreferenced verts, creates an identity row/col in the Laplacian and
+  bool anyUnreferenced = false;
+  for (const size_t& ind : oldToNewMap) {
+    if (ind == INVALID_IND) anyUnreferenced = true;
+  }
+  if (anyUnreferenced) {
+
+    // Invert the map
+    std::vector<size_t> newToOldMap(inputMesh.nVertices());
+    for (size_t iOld = 0; iOld < oldToNewMap.size(); iOld++) {
+      if (oldToNewMap[iOld] != INVALID_IND) {
+        newToOldMap[oldToNewMap[iOld]] = iOld;
+      }
+    }
+    size_t N = oldToNewMap.size();
+
+    { // Update the Laplacian
+      std::vector<Eigen::Triplet<double>> triplets;
+
+      // Copy entries
+      for (int k = 0; k < L.outerSize(); k++) {
+        for (typename SparseMatrix<double>::InnerIterator it(L, k); it; ++it) {
+          double thisVal = it.value();
+          int i = it.row();
+          int j = it.col();
+          triplets.emplace_back(newToOldMap[i], newToOldMap[j], thisVal);
+        }
+      }
+
+      // Add diagonal entries for unreferenced
+      for (size_t iOld = 0; iOld < oldToNewMap.size(); iOld++) {
+        if (oldToNewMap[iOld] == INVALID_IND) {
+          triplets.emplace_back(iOld, iOld, laplacianReplaceVal);
+        }
+      }
+
+      // Update the matrix
+      L = SparseMatrix<double>(N, N);
+      L.setFromTriplets(triplets.begin(), triplets.end());
+    }
+
+    { // Update the mass matrix
+      std::vector<Eigen::Triplet<double>> triplets;
+
+      // Copy entries
+      double smallestVal = std::numeric_limits<double>::infinity();
+      for (int k = 0; k < M.outerSize(); k++) {
+        for (typename SparseMatrix<double>::InnerIterator it(M, k); it; ++it) {
+          double thisVal = it.value();
+          int i = it.row();
+          int j = it.col();
+          triplets.emplace_back(newToOldMap[i], newToOldMap[j], thisVal);
+          smallestVal = std::fmin(smallestVal, std::abs(thisVal));
+        }
+      }
+
+      // Add diagonal entries for unreferenced
+      double newMassVal = massReplaceVal < 0 ? -massReplaceVal * smallestVal : massReplaceVal;
+      for (size_t iOld = 0; iOld < oldToNewMap.size(); iOld++) {
+        if (oldToNewMap[iOld] == INVALID_IND) {
+          triplets.emplace_back(iOld, iOld, newMassVal);
+        }
+      }
+
+      // Update the matrix
+      M = SparseMatrix<double>(N, N);
+      M.setFromTriplets(triplets.begin(), triplets.end());
+    }
+  }
 
 
   // write output matrices, if requested
