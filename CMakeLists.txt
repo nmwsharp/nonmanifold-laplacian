@@ -74,4 +74,5 @@ set(SRCS
 
 add_executable(tufted-idt "${SRCS}")
 target_include_directories(tufted-idt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+target_include_directories(tufted-idt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/deps/polyscope/deps/args")
 target_link_libraries(tufted-idt geometry-central polyscope)
