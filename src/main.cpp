@@ -74,7 +74,7 @@ void generateVertexSeparatedTuftedCover() {
 
   // Make it manifold
   manifoldTuftedMesh = tuftedMesh->toManifoldMesh();
-  manifoldTuftedMesh->printStatistics();
+  //manifoldTuftedMesh->printStatistics();
   tuftedGeom = tuftedGeom->reinterpretTo(*manifoldTuftedMesh);
   tuftedGeom->requireEdgeLengths();
   tuftedEdgeLengths = tuftedGeom->edgeLengths;
@@ -264,13 +264,13 @@ int main(int argc, char** argv) {
   SimplePolygonMesh inputMesh(args::get(inputFilename));
 
   // if it's a point cloud, generate some triangles
-  // inputMesh.polygons.clear(); // FIXME
   isPointCloud = inputMesh.polygons.empty();
   if (isPointCloud) {
+    std::cout << "Detected point cloud input" << std::endl;
     Neighbors_t neigh = generate_knn(inputMesh.vertexCoordinates, nNeigh);
     std::vector<Vector3> normals = generate_normals(inputMesh.vertexCoordinates, neigh);
     std::vector<std::vector<Vector2>> coords = generate_coords_projection(inputMesh.vertexCoordinates, normals, neigh);
-    LocalTriangulationResult localTri = build_delaunay_triangulations(coords, neigh, false);
+    LocalTriangulationResult localTri = build_delaunay_triangulations(coords, neigh);
 
     // Take the union of all triangles in all the neighborhoods
     for (size_t iPt = 0; iPt < inputMesh.vertexCoordinates.size(); iPt++) {

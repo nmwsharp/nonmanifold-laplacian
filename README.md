@@ -54,14 +54,10 @@ Sparse matrices are output as an ASCII file where each line one entry in the mat
 
 This implementation is not the same code which was used to generate the results in the paper. If you need exact comparisons, please contact the authors.
 
-- For point clouds, this repo uses a simple method to generate planar Delaunay triangulations, which may not be totally robust to collinear or degenerate point clouds.
-
-
 ### Direct dependencies
 
 - [geometry-central](http://geometry-central.net) for mesh data structures and 3D geometry
 - [Polyscope](http://polyscope.run/) for 3D visualizations and rendering
-- [jc_voronoi](https://github.com/JCash/voronoi) for generating 2D Delaunay triangulations for point clouds
 
 
 (all are permissively licensed, and packaged with the repo)
