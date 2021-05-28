@@ -28,15 +28,19 @@ The codebase also builds on Visual Studio 2017 & 2019, by using CMake to generat
 
 The input should be a mesh or point cloud; any inputs with no faces will be processed as point clouds. Use the `--gui` flag to load a 3D gui to inspect the results.
 
+If the input contains unreferenced vertices that do not appear in any face, the program will still ensure that the resulting matices have the same dimensions and indexing as the input vertex set by adding dummy rows. Optional parameters below control what values are inserted into these dummy rows; the defaults set `1` for the diagonal of the Laplacian and a small positive value for the diagonal of the mass matrix, to yield matrices which are full rank.
+
 ### Options
 
 Use `--help` for defaults, etc.
 
 | flag | purpose | 
 | :------------- |:------------- |
-| `--gui ` | Show the GUI| 
+| `--gui ` | Show the GUI | 
 | `--mollifyFactor` | Amount of intrinsic mollification to apply, relative to the mesh length scale. Larger values will lend robustness to floating-point degeneracy, though very large values will distort geometry. Reasonable range is roughly 0 to 1e-3. Default: 1e-6 |
 | `--nNeigh` | Number of nearest-neighbors to be used for point cloud Laplacian. The construction is not very sensitive to this parameter, it usually does not need to be tweaked. Default: 30 |
+| `--laplacianReplace` |  For any unreferenced vertices in the input, put this this value in the diagonal of the Laplace matrix. Default: `1` |
+| `--massReplace` |  For any unreferenced vertices in the input, put this this value in the diagonal of the mass matrix. Negative values will interpreted relative to the smallest mass entry among referenced vertices, like X times the smallest mass. Default: `-1e-3` |
 | `--outputPrefix` |  Prefix to prepend to all output file paths. Default: `tufted_` |
 | `--writeLaplacian` | Write the resulting Laplace matrix. A sparse `VxV` matrix, holding the _weak_ Laplace matrix (that is, does not include mass matrix). Name: `laplacian.spmat` | |
 | `--writeMass` | Write the resulting mass matrix. A sparse diagonal `VxV` matrix, holding lumped vertex areas. Name: `lumped_mass.spmat` | |
@@ -50,7 +54,6 @@ Sparse matrices are output as an ASCII file where each line one entry in the mat
 
 This implementation is not the same code which was used to generate the results in the paper. If you need exact comparisons, please contact the authors.
 
-- Any unreferenced vertices in the input are stripped from the output
 - For point clouds, this repo uses a simple method to generate planar Delaunay triangulations, which may not be totally robust to collinear or degenerate point clouds.
 
 
