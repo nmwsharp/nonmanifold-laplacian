@@ -74,7 +74,7 @@ void generateVertexSeparatedTuftedCover() {
 
   // Make it manifold
   manifoldTuftedMesh = tuftedMesh->toManifoldMesh();
-  //manifoldTuftedMesh->printStatistics();
+  // manifoldTuftedMesh->printStatistics();
   tuftedGeom = tuftedGeom->reinterpretTo(*manifoldTuftedMesh);
   tuftedGeom->requireEdgeLengths();
   tuftedEdgeLengths = tuftedGeom->edgeLengths;

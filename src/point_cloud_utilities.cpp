@@ -4,8 +4,8 @@
 #include "geometrycentral/utilities/knn.h"
 
 #include "polyscope/point_cloud.h"
-#include "polyscope/surface_mesh.h"
 #include "polyscope/polyscope.h"
+#include "polyscope/surface_mesh.h"
 
 #include "Eigen/Dense"
 
@@ -190,8 +190,8 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
         double angleI = pointAngles[sortInds[i]];
         double angleJ = pointAngles[sortInds[j]];
         double gap;
-        if(i+1 == nNeigh) {
-          gap =  angleJ - (angleI + 2 * M_PI);
+        if (i + 1 == nNeigh) {
+          gap = angleJ - (angleI + 2 * M_PI);
         } else {
           gap = angleJ - angleI;
         }
@@ -251,7 +251,7 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
             rayRayIntersection(0.5 * startPos, startPosDir.rotate90(), 0.5 * endPos, -endPosDir.rotate90());
         Vector2 circumcenter = 0.5 * startPos + isect.tRay1 * startPosDir.rotate90();
         double circumradius = norm(circumcenter);
-        
+
         // Find the minimum distance to the circumcenter
         double nearestDistSq = std::numeric_limits<double>::infinity();
         for (size_t iTest = 0; iTest < nNeigh; iTest++) {
@@ -260,7 +260,7 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
           nearestDistSq = std::fmin(nearestDistSq, thisDistSq);
 
           // if it's already strictly inside, no need to keep searching
-          if(nearestDistSq < circumradius*circumradius) break;
+          if (nearestDistSq < circumradius * circumradius) break;
         }
         double nearestDist = std::sqrt(nearestDistSq);
 
@@ -280,7 +280,7 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
       }
 
       // if we couldn't find any triangles, increment the start index
-      if(!foundTri) {
+      if (!foundTri) {
         edgeStartInd++;
       }
     }
@@ -288,4 +288,3 @@ LocalTriangulationResult build_delaunay_triangulations(const std::vector<std::ve
 
   return result;
 }
-
